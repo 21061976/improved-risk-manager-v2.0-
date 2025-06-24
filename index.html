@@ -803,8 +803,159 @@
                 gap: 10px;
             }
         }
+/* כפתור עריכה */
+        .edit-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .edit-toggle:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .edit-toggle.active {
+            background: #27ae60;
+        }
+
+        /* כפתור ייצוא PDF */
+        .pdf-export {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .pdf-export:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .pdf-export.exporting {
+            background: #f39c12;
+            cursor: not-allowed;
+        }
+
+        /* סגנון לעריכה */
+        .editable {
+            padding: 3px;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .editable[contenteditable="true"] {
+            background: rgba(52, 152, 219, 0.1);
+            border: 2px dashed #3498db;
+            outline: none;
+            cursor: text;
+            padding: 5px;
+        }
+
+        .editable[contenteditable="true"]:hover {
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        .editable[contenteditable="true"]:focus {
+            background: rgba(52, 152, 219, 0.15);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        }
+
+        /* הודעת הצלחה */
+        .success-message {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: #27ae60;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .success-message.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @media (max-width: 768px) {
+            .edit-toggle {
+                top: 10px;
+                left: 10px;
+                padding: 12px 20px;
+                font-size: 0.9em;
+            }
+
+            .pdf-export {
+                top: 65px;
+                left: 10px;
+                padding: 12px 20px;
+                font-size: 0.9em;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1 1 50%;
+                min-width: 120px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .workflow {
+                flex-direction: column;
+            }
+            
+            .matrix {
+                grid-template-columns: repeat(6, 35px);
+            }
+            
+            .matrix-cell {
+                width: 35px;
+                height: 35px;
+                font-size: 10px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
 
         @media print {
+            .edit-toggle, .pdf-export, .success-message {
+                display: none !important;
+            }
+            
             .action-buttons,
             .btn {
                 display: none !important;
@@ -813,7 +964,12 @@
     </style>
 </head>
 <body>
+    
     <div class="container">
+      
+    <button class="edit-toggle" onclick="toggleEdit()">🎨 התחל עריכה</button>
+    <button class="pdf-export" onclick="exportToPDF()">📄 ייצוא ל-PDF</button>
+            
         <div class="header">
             <h1>כלי מקצועי לניהול סיכונים בפרויקטים</h1>
             <p>מערכת מתקדמת להערכה וניהול סיכונים לכל סוגי הפרויקטים</p>
@@ -1934,6 +2090,146 @@
                 timestamp: new Date().toISOString()
             }));
         }, 30000); // Auto-save every 30 seconds
+        // פונקציונליות עריכה וייצוא PDF
+        let isEditing = false;
+
+        function toggleEdit() {
+            const editToggleButton = document.querySelector('.edit-toggle');
+            const successMessage = getOrCreateSuccessMessage();
+            
+            isEditing = !isEditing;
+            
+            // מצא אלמנטים הניתנים לעריכה
+            const headers = document.querySelectorAll('h1, h2, h3');
+            const paragraphs = document.querySelectorAll('p');
+            const labels = document.querySelectorAll('label');
+            
+            const allEditables = [...headers, ...paragraphs, ...labels];
+            
+            allEditables.forEach(el => {
+                el.contentEditable = isEditing;
+                if (isEditing) {
+                    el.classList.add('editable');
+                } else {
+                    el.classList.remove('editable');
+                }
+            });
+
+            if (isEditing) {
+                editToggleButton.textContent = '💾 סיים עריכה';
+                editToggleButton.classList.add('active');
+                showMessage('✅ מצב עריכה הופעל!');
+            } else {
+                editToggleButton.textContent = '🎨 התחל עריכה';
+                editToggleButton.classList.remove('active');
+                showMessage('✅ השינויים נשמרו!');
+            }
+        }
+
+        function getOrCreateSuccessMessage() {
+            let successMessage = document.getElementById('successMessage');
+            if (!successMessage) {
+                successMessage = document.createElement('div');
+                successMessage.id = 'successMessage';
+                successMessage.className = 'success-message';
+                document.body.appendChild(successMessage);
+            }
+            return successMessage;
+        }
+
+        function showMessage(msg) {
+            const successMessage = getOrCreateSuccessMessage();
+            successMessage.textContent = msg;
+            successMessage.classList.add('show');
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // PDF Export functionality
+        async function exportToPDF() {
+            const button = document.querySelector('.pdf-export');
+            
+            if (button.classList.contains('exporting')) return;
+            
+            button.classList.add('exporting');
+            button.textContent = '⏳ מייצא...';
+            
+            try {
+                const wasEditing = isEditing;
+                if (wasEditing) {
+                    const editables = document.querySelectorAll('.editable');
+                    editables.forEach(el => {
+                        el.contentEditable = false;
+                    });
+                }
+                
+                const elementsToHide = ['.edit-toggle', '.pdf-export', '.success-message'];
+                elementsToHide.forEach(selector => {
+                    const el = document.querySelector(selector);
+                    if (el) el.style.display = 'none';
+                });
+                
+                const printCSS = `
+                    @media print {
+                        body { 
+                            -webkit-print-color-adjust: exact !important;
+                            color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        .edit-toggle, .pdf-export, .success-message {
+                            display: none !important;
+                        }
+                        .container {
+                            max-width: none !important;
+                            box-shadow: none !important;
+                        }
+                        .section, .tab-content, .summary-box {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                        }
+                        .tabs {
+                            position: static !important;
+                        }
+                    }
+                `;
+                
+                const style = document.createElement('style');
+                style.textContent = printCSS;
+                document.head.appendChild(style);
+                
+                setTimeout(() => {
+                    window.print();
+                    
+                    setTimeout(() => {
+                        document.head.removeChild(style);
+                        
+                        elementsToHide.forEach(selector => {
+                            const el = document.querySelector(selector);
+                            if (el) el.style.display = '';
+                        });
+                        
+                        if (wasEditing) {
+                            const editables = document.querySelectorAll('.editable');
+                            editables.forEach(el => {
+                                el.contentEditable = true;
+                            });
+                        }
+                        
+                        button.classList.remove('exporting');
+                        button.textContent = '📄 ייצוא ל-PDF';
+                        
+                        showMessage('✅ ההדפסה הושלמה! בחר "שמור כ-PDF" בדפדפן');
+                    }, 1000);
+                }, 500);
+                
+            } catch (error) {
+                console.error('Export failed:', error);
+                button.classList.remove('exporting');
+                button.textContent = '📄 ייצוא ל-PDF';
+                showMessage('❌ שגיאה בייצוא. נסה שוב.');
+            }
+        }
     </script>
 </body>
 </html>
