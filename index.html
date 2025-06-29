@@ -1088,9 +1088,26 @@
                 </div>
 
                 <div class="summary-box">
-                    <h3>סיכום הגדרת הפרויקט</h3>
-                    <p>להמשך התהליך, מלא את פרטי הפרויקט ולחץ על כפתור "המשך לניהול סיכונים" בתחתית העמוד.</p>
-                </div>
+    <h3>ניתוח מסמך פרויקט אוטומטי</h3>
+    <p>העלה מסמך פרויקט קיים (Word, PDF, טקסט) והמערכת תנתח אותו אוטומטי ותמלא את כל השלבים בבינה מלאכותית</p>
+    <input type="file" id="document-upload" accept=".pdf,.doc,.docx,.txt" style="display: none;" onchange="handleDocumentUpload(event)">
+    <div class="action-buttons" style="margin: 15px 0;">
+        <button class="btn btn-gradient-sunset btn-glow btn-lg" onclick="document.getElementById('document-upload').click()">
+            🤖 העלה מסמך לניתוח חכם
+        </button>
+        <button class="btn btn-gradient-forest btn-sm" onclick="showAnalysisExample()">
+            💡 הצג דוגמה למסמך
+        </button>
+    </div>
+    <div id="analysis-status" style="display: none; margin: 15px 0; padding: 15px; border-radius: 8px; background: #d5e8f7; border-left: 4px solid #3498db;">
+        <div id="analysis-progress">🔍 מנתח מסמך עם בינה מלאכותית...</div>
+    </div>
+</div>
+
+<div class="summary-box">
+    <h3>סיכום הגדרת הפרויקט</h3>
+    <p>להמשך התהליך, מלא את פרטי הפרויקט (או העלה מסמך לניתוח אוטומטי) ולחץ על כפתור "המשך לניהול סיכונים" בתחתית העמוד.</p>
+</div>
 
                 <div class="action-buttons">
                     <button class="btn btn-gradient-ocean btn-animated btn-lg" onclick="showSection('risk-management')">
@@ -1778,46 +1795,26 @@
                 <div class="summary-box">
                     <h3>המלצות מרכזיות</h3>
                     <div class="editable" data-field="mainRecommendations">
-                        ${generateRecommendations()}
-                    </div>
-                </div>
-
-                <div class="summary-box">
-                    <h3>צעדים הבאים</h3>
-                    <div class="editable" data-field="nextSteps">
-                        ${generateNextSteps()}
-                    </div>
-                </div>
-            `;
-            
-            reportDiv.innerHTML = reportHtml;
-            makeElementsEditable();
-        }
-
-        function generateRecommendations() {
-            const highRisks = risks.filter(r => r.severity >= 65);
-            const mediumRisks = risks.filter(r => r.severity >= 21 && r.severity < 65);
-            
-            let recommendations = [];
-            
-            if (highRisks.length > 0) {
-                recommendations.push(`זוהו ${highRisks.length} סיכונים בחומרה גבוהה הדורשים טיפול מיידי.`);
-            }
-            
-            if (mediumRisks.length > 0) {
-                recommendations.push(`יש לפתח תוכנית לטיפול ב-${mediumRisks.length} סיכונים בחומרה בינונית.`);
-            }
-            
-            if (projectData.innovationLevel === 'high') {
-                recommendations.push('בשל רמת החדשנות הגבוהה, נדרשים אישורים מיוחדים.');
-            }
-            
-            if (recommendations.length === 0) {
-                recommendations.push('הפרויקט מציג פרופיל סיכון נמוך. מומלץ מעקב שוטף.');
-            }
-            
-            return recommendations.join(' ');
-        }
+                       function generateNextSteps() {
+    // Use analyzed next steps if available
+    if (projectData.nextSteps) {
+        return projectData.nextSteps;
+    }
+    
+    const highRisks = risks.filter(r => r.severity >= 65);
+    
+    let steps = [];
+    
+    if (highRisks.length > 0) {
+        steps.push('1. טיפול מיידי בסיכונים בחומרה גבוהה');
+    }
+    
+    steps.push('2. קביעת מפגשי מעקב תקופתיים');
+    steps.push('3. עדכון תוכנית ניהול הסיכונים');
+    steps.push('4. תיאום עם בעלי העניין המרכזיים');
+    
+    return steps.join('<br>');
+}
 
         function generateNextSteps() {
             const highRisks = risks.filter(r => r.severity >= 65);
@@ -2090,6 +2087,412 @@
                 timestamp: new Date().toISOString()
             }));
         }, 30000); // Auto-save every 30 seconds
+// 🤖 Document Analysis Functionality with AI
+        async function handleDocumentUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusDiv = document.getElementById('analysis-status');
+            const progressDiv = document.getElementById('analysis-progress');
+            
+            statusDiv.style.display = 'block';
+            progressDiv.innerHTML = '🔍 קורא ומנתח מסמך...';
+
+            try {
+                let text = '';
+                
+                if (file.type === 'text/plain') {
+                    text = await file.text();
+                } else if (file.type.includes('pdf')) {
+                    progressDiv.innerHTML = '📄 מעבד קובץ PDF עם בינה מלאכותית...';
+                    text = await extractTextFromFile(file);
+                } else if (file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+                    progressDiv.innerHTML = '📝 מעבד מסמך Word עם בינה מלאכותית...';
+                    text = await extractTextFromFile(file);
+                } else {
+                    throw new Error('סוג קובץ לא נתמך. אנא העלה קובץ PDF, Word או טקסט');
+                }
+
+                progressDiv.innerHTML = '🤖 מנתח תוכן עם בינה מלאכותית מתקדמת - עוד רגע...';
+                
+                const analysis = await analyzeDocumentWithClaude(text, file.name);
+                
+                progressDiv.innerHTML = '✅ ניתוח הושלם בהצלחה! מעדכן את כל השדות...';
+                
+                await updateFormFromAnalysis(analysis);
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                    showMessage('🎉 המסמך נותח בהצלחה! כל השדות עודכנו אוטומטית!');
+                }, 2000);
+
+            } catch (error) {
+                console.error('Document analysis error:', error);
+                progressDiv.innerHTML = `❌ שגיאה בניתוח המסמך: ${error.message}`;
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 4000);
+            }
+        }
+
+        async function extractTextFromFile(file) {
+            if (file.type === 'text/plain') {
+                return await file.text();
+            }
+            
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        let text = e.target.result;
+                        // Clean up text from binary files
+                        text = text.replace(/[^\x20-\x7E\u0590-\u05FF\s]/g, ' ');
+                        text = text.replace(/\s+/g, ' ');
+                        text = text.trim();
+                        resolve(text);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
+                reader.readAsText(file, 'utf-8');
+            });
+        }
+
+        async function analyzeDocumentWithClaude(documentText, fileName) {
+            const prompt = `בתור מומחה לניהול פרויקטים וסיכונים, אנא נתח את המסמך הבא וחלץ ממנו מידע מפורט:
+
+שם הקובץ: ${fileName}
+תוכן המסמך:
+${documentText}
+
+אנא חזור עם JSON במבנה הבא בלבד (ללא טקסט נוסף, רק JSON תקין):
+{
+  "projectInfo": {
+    "name": "שם הפרויקט",
+    "manager": "שם מנהל הפרויקט", 
+    "organization": "שם הארגון/בית ספר",
+    "type": "educational|technological|infrastructure|organizational|research|community",
+    "scope": "local|school|district|national",
+    "description": "תיאור מפורט של הפרויקט, מטרות ויעדים",
+    "startDate": "YYYY-MM-DD או ריק אם לא צוין",
+    "endDate": "YYYY-MM-DD או ריק אם לא צוין", 
+    "stakeholders": "רשימת בעלי העניין והגורמים המעורבים"
+  },
+  "risks": [
+    {
+      "description": "תיאור מפורט של הסיכון",
+      "category": "קטגוריית הסיכון",
+      "probability": "מספר בין 1-10 להסתברות התרחשות",
+      "impact": "מספר בין 1-10 לעוצמת הנזק"
+    }
+  ],
+  "innovation": {
+    "level": "low|medium|high",
+    "description": "תיאור האספקטים החדשניים בפרויקט",
+    "complianceLevel": "low|medium|high"
+  },
+  "recommendations": "המלצות מפורטות לניהול הפרויקט",
+  "nextSteps": "צעדים הבאים מומלצים"
+}
+
+חשוב מאוד: החזר רק JSON תקין ללא כל טקסט נוסף!`;
+
+            try {
+                const response = await window.claude.complete(prompt);
+                // Try to extract JSON from response if it contains extra text
+                let jsonText = response.trim();
+                const jsonStart = jsonText.indexOf('{');
+                const jsonEnd = jsonText.lastIndexOf('}');
+                if (jsonStart !== -1 && jsonEnd !== -1) {
+                    jsonText = jsonText.substring(jsonStart, jsonEnd + 1);
+                }
+                return JSON.parse(jsonText);
+            } catch (error) {
+                console.error('Claude analysis error:', error);
+                throw new Error('שגיאה בניתוח המסמך עם בינה מלאכותית. נסה שוב או בדוק את המסמך');
+            }
+        }
+
+        async function updateFormFromAnalysis(analysis) {
+            // Update project info
+            if (analysis.projectInfo) {
+                const info = analysis.projectInfo;
+                
+                if (info.name) {
+                    document.getElementById('project-name').value = info.name;
+                    projectData.name = info.name;
+                }
+                if (info.manager) {
+                    document.getElementById('project-manager').value = info.manager;
+                    projectData.manager = info.manager;
+                }
+                if (info.organization) {
+                    document.getElementById('organization').value = info.organization;
+                    projectData.organization = info.organization;
+                }
+                if (info.scope) {
+                    document.getElementById('project-scope').value = info.scope;
+                    projectData.scope = info.scope;
+                }
+                if (info.description) {
+                    document.getElementById('project-description').value = info.description;
+                    projectData.description = info.description;
+                }
+                if (info.startDate && info.startDate !== 'ריק אם לא צוין') {
+                    document.getElementById('start-date').value = info.startDate;
+                    projectData.startDate = info.startDate;
+                }
+                if (info.endDate && info.endDate !== 'ריק אם לא צוין') {
+                    document.getElementById('end-date').value = info.endDate;
+                    projectData.endDate = info.endDate;
+                }
+                if (info.stakeholders) {
+                    document.getElementById('stakeholders').value = info.stakeholders;
+                    projectData.stakeholders = info.stakeholders;
+                }
+                
+                // Select project type
+                if (info.type) {
+                    const typeElements = document.querySelectorAll('.project-type');
+                    typeElements.forEach(el => {
+                        if (el.onclick && el.onclick.toString().includes(info.type)) {
+                            selectProjectType(el, info.type);
+                        }
+                    });
+                }
+            }
+
+            // Clear existing risks and add analyzed ones
+            if (analysis.risks && analysis.risks.length > 0) {
+                risks = [];
+                document.getElementById('risks-table').innerHTML = '';
+                
+                for (const riskData of analysis.risks) {
+                    addRiskFromData(riskData);
+                }
+                
+                updateRiskCounts();
+                generateRiskMatrix();
+            }
+
+            // Update innovation info
+            if (analysis.innovation) {
+                const innovation = analysis.innovation;
+                
+                if (innovation.level) {
+                    const levelElements = document.querySelectorAll('.innovation-level');
+                    levelElements.forEach(el => {
+                        if (el.onclick && el.onclick.toString().includes(innovation.level)) {
+                            selectInnovationLevel(el, innovation.level);
+                        }
+                    });
+                }
+                
+                if (innovation.description) {
+                    const innovationDesc = document.getElementById('innovation-description');
+                    if (innovationDesc) {
+                        innovationDesc.value = innovation.description;
+                        projectData.innovationDescription = innovation.description;
+                    }
+                }
+                
+                if (innovation.complianceLevel) {
+                    const complianceEl = document.getElementById('overall-compliance');
+                    if (complianceEl) {
+                        complianceEl.value = innovation.complianceLevel;
+                        projectData.complianceLevel = innovation.complianceLevel;
+                    }
+                }
+            }
+
+            // Store additional analysis data
+            projectData.mainRecommendations = analysis.recommendations || '';
+            projectData.nextSteps = analysis.nextSteps || '';
+            
+            // Update UI components
+            updateInnovationDisplay();
+            setTimeout(() => {
+                updateResponseStrategies();
+            }, 500);
+        }
+
+        function addRiskFromData(riskData) {
+            const riskCategories = {
+                'educational': ['פדגוגי', 'טכנולוגי', 'משאבים', 'לוח זמנים', 'צוות'],
+                'technological': ['טכני', 'אבטחה', 'תאימות', 'ביצועים', 'תמיכה'],
+                'infrastructure': ['תקציב', 'בטיחות', 'רגולציה', 'לוח זמנים', 'איכות'],
+                'organizational': ['שינוי', 'התנגדות', 'תקשורת', 'הכשרה', 'מדיניות'],
+                'research': ['מתודולוגיה', 'נתונים', 'אתיקה', 'תקציב', 'פרסום'],
+                'community': ['מעורבות', 'תקשורת', 'משאבים', 'תמיכה', 'יישום']
+            };
+
+            const categories = riskCategories[currentProjectType] || ['כללי', 'טכני', 'תפעולי', 'משאבים', 'לוח זמנים'];
+            
+            const riskId = `risk-${riskIdCounter++}`;
+            const probability = Math.min(10, Math.max(1, parseInt(riskData.probability) || 5));
+            const impact = Math.min(10, Math.max(1, parseInt(riskData.impact) || 5));
+            
+            const risk = {
+                id: riskId,
+                description: riskData.description || '',
+                category: riskData.category || categories[0],
+                probability: probability,
+                impact: impact,
+                severity: probability * impact
+            };
+            
+            risks.push(risk);
+            
+            const tableBody = document.getElementById('risks-table');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="risk-input" value="${risk.description}" onchange="updateRisk('${riskId}', 'description', this.value)"></td>
+                <td>
+                    <select class="risk-input" onchange="updateRisk('${riskId}', 'category', this.value)">
+                        ${categories.map(cat => `<option value="${cat}" ${cat === risk.category ? 'selected' : ''}>${cat}</option>`).join('')}
+                    </select>
+                </td>
+                <td><input type="number" min="1" max="10" class="risk-input" value="${risk.probability}" onchange="updateRisk('${riskId}', 'probability', this.value)"></td>
+                <td><input type="number" min="1" max="10" class="risk-input" value="${risk.impact}" onchange="updateRisk('${riskId}', 'impact', this.value)"></td>
+                <td><span class="risk-level ${getRiskLevelClass(risk.severity)}" id="severity-${riskId}">${risk.severity}</span></td>
+                <td><button class="btn btn-gradient-fire btn-sm" onclick="removeRisk('${riskId}')">🗑️ מחק</button></td>
+            `;
+            
+            tableBody.appendChild(row);
+        }
+
+        function showAnalysisExample() {
+            const exampleWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+            exampleWindow.document.write(`
+                <html dir="rtl">
+                <head>
+                    <title>דוגמה לניתוח מסמך פרויקט עם בינה מלאכותית</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 20px; 
+                            line-height: 1.6; 
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: #333;
+                        }
+                        .container {
+                            background: white;
+                            padding: 30px;
+                            border-radius: 15px;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                            max-width: 800px;
+                            margin: 0 auto;
+                        }
+                        .example { 
+                            background: #f8f9fa; 
+                            padding: 20px; 
+                            border-left: 5px solid #3498db; 
+                            margin: 20px 0; 
+                            border-radius: 8px;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        }
+                        h1 { 
+                            color: #2c3e50; 
+                            text-align: center;
+                            margin-bottom: 30px;
+                            font-size: 28px;
+                        }
+                        h3 { 
+                            color: #2c3e50; 
+                            border-bottom: 2px solid #3498db;
+                            padding-bottom: 10px;
+                        }
+                        .feature {
+                            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+                            color: white;
+                            padding: 15px;
+                            margin: 10px 0;
+                            border-radius: 8px;
+                            font-weight: bold;
+                        }
+                        .tip {
+                            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+                            color: white;
+                            padding: 10px;
+                            margin: 5px 0;
+                            border-radius: 5px;
+                        }
+                        button {
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white; 
+                            padding: 15px 30px; 
+                            border: none; 
+                            border-radius: 10px; 
+                            cursor: pointer; 
+                            margin-top: 30px;
+                            font-size: 16px;
+                            font-weight: bold;
+                            display: block;
+                            margin: 30px auto;
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                            transition: all 0.3s ease;
+                        }
+                        button:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>🤖 ניתוח מסמך פרויקט עם בינה מלאכותית</h1>
+                        
+                        <h3>💫 יכולות המערכת:</h3>
+                        <div class="feature">📄 ניתוח קבצי PDF מורכבים</div>
+                        <div class="feature">📝 עיבוד מסמכי Word (.docx, .doc)</div>
+                        <div class="feature">📄 קריאת קבצי טקסט רגיל (.txt)</div>
+                        <div class="feature">🎯 זיהוי אוטומטי של סיכונים וזדמנויות</div>
+                        <div class="feature">📊 הערכת חומרת סיכונים בצורה חכמה</div>
+                        
+                        <h3>🚀 איך זה עובד:</h3>
+                        <ol style="font-size: 16px; line-height: 2;">
+                            <li><strong>העלה מסמך</strong> - כל קובץ שמכיל מידע על הפרויקט שלך</li>
+                            <li><strong>ניתוח אוטומטי</strong> - הבינה המלאכותית קוראת ומבינה את התוכן</li>
+                            <li><strong>מילוי חכם</strong> - כל השדות ממולאים אוטומטית בכל השלבים</li>
+                            <li><strong>זיהוי סיכונים</strong> - המערכת מזהה סיכונים פוטנציאליים ומדרגת אותם</li>
+                            <li><strong>המלצות מותאמות</strong> - קבלת המלצות מקצועיות לניהול הפרויקט</li>
+                        </ol>
+                        
+                        <div class="example">
+                            <h3>🎯 דוגמה למסמך פרויקט מוצלח:</h3>
+                            <p><strong>🏷️ שם הפרויקט:</strong> פיתוח מערכת למידה דיגיטלית מתקדמת</p>
+                            <p><strong>👤 מנהל הפרויקט:</strong> ד"ר אסף אוזן</p>
+                            <p><strong>🏫 ארגון:</strong> בית ספר יסודי אלון - חדשנות חינוכית</p>
+                            <p><strong>📝 תיאור:</strong> פיתוח פלטפורמה דיגיטלית חדשנית לשיפור חוויית הלמידה עבור תלמידי בית הספר, כולל כלי אינטראקטיביים, מעקב התקדמות אישי וחיבור עם הורים...</p>
+                            <p><strong>⚠️ סיכונים זוהו:</strong> עיכובים טכנולוגיים, התנגדות מצד המורים הוותיקים, בעיות תקציב, אתגרי אבטחת מידע...</p>
+                            <p><strong>🎯 יעדים:</strong> שיפור הישגי התלמידים ב-25%, העלאת מעורבות הורים ב-40%...</p>
+                        </div>
+                        
+                        <h3>💡 טיפים לקבלת תוצאות מיטביות:</h3>
+                        <div class="tip">✅ ודא שהמסמך כולל פרטים ברורים ומפורטים על הפרויקט</div>
+                        <div class="tip">📅 כלול מידע על מטרות, לוח זמנים ובעלי עניין</div>
+                        <div class="tip">⚠️ אם יש סיכונים ידועים או חששות - תאר אותם במסמך</div>
+                        <div class="tip">🎯 השתמש בשפה ברורה, פשוטה ומובנית</div>
+                        <div class="tip">📊 הוסף נתונים כמותיים אם יש (תקציבים, זמנים, מספר משתתפים)</div>
+                        
+                        <h3>🎨 תכונות מתקדמות:</h3>
+                        <ul style="font-size: 16px; line-height: 1.8;">
+                            <li>🔍 <strong>ניתוח סמנטי מתקדם</strong> - הבנת הקשר ומשמעות</li>
+                            <li>📈 <strong>הערכת סיכונים חכמה</strong> - דירוג אוטומטי לפי חומרה</li>
+                            <li>🎯 <strong>המלצות מותאמות אישית</strong> - לפי סוג הפרויקט והארגון</li>
+                            <li>⚡ <strong>עדכון בזמן אמת</strong> - כל השלבים מתעדכנים מיידית</li>
+                            <li>💾 <strong>שמירה אוטומטית</strong> - כל המידע נשמר אוטומטית</li>
+                        </ul>
+                        
+                        <button onclick="window.close()">🚀 התחל לעבוד עם המערכת!</button>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+        
         // פונקציונליות עריכה וייצוא PDF
         let isEditing = false;
 
